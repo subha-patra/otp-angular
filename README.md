@@ -12,6 +12,7 @@
 
 ![OTP Input Demo](https://github.com/adrik-HubGuru/otp-angular/blob/main/otp-angular.gif?raw=true)
 
+[Demo](https://stackblitz.com/edit/stackblitz-starters-osu6xqrf?file=package.json)
 ---
 ## 📦 Installation
 
@@ -20,6 +21,21 @@ npm install otp-angular
 ```
 --- 
 
+## 🚀 Latest changes in 1.0.4
+
+- **Update Readme** Readme file updated
+ 
+
+---
+
+## 🚀 Latest changes in 1.0.3
+
+- **Support ReactiveFormsModule & FormsModule** formControl and ngModel are supported
+- **Support types on Config** types will be available
+- **Fixed Paste Event** types will be available
+
+---
+
 ## 🚀 latest Changes in 1.0.1
 
 - **Emits `null` instead of an empty string** if no value is supplied
@@ -27,24 +43,42 @@ npm install otp-angular
 
 ---
 
+
 ## Usage
+
 
 For Component
 
 ```bash
-import { OtpAngular } from 'otp-angular';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
 
 @Component({
-  imports: [...others, OtpAngular]
+  imports: [...others, OtpAngular, OtpAngularType]
 })
+
+export class <ComponentName> {
+  protected config = signal<OtpAngularType>({ length: 4 });
+}
+
 ```
 
 For Template
 ```bash
+@let _config = config();
 <!-- With Event Binding -->
-<otp-angular [config]="{length: 4}" (onInputChange)="onInputChange($event)"  (onResendAvailable)="resend($event)" />
+<otp-angular [config]="_config" (onInputChange)="onInputChange($event)"  (onResendAvailable)="resend($event)" />
+
+<!-- Using Reactive FormControl -->
+<otp-angular [config]="_config" formControlName="otp" />
+
+<!-- Using Forms Module -->
+<otp-angular [config]="_config" [(ngModel)]="otp" />
+
 ```
----
+
+--- 
+
+
 ## ⚙️ Inputs/Outputs
 
  | Option            | Type                      |required    | Description                    | Default|
@@ -84,6 +118,8 @@ For Template
 
 
 ---
+
+
 
 ### 📘 Option Descriptions
 
@@ -135,3 +171,8 @@ this.otpRef.reset();
 ## 📄 License
 
 [![License: MIT](https://raw.githubusercontent.com/subha-patra/otp-angular/ce74d1caa98e055864f1dab0b4dd7be6477589e4/licence.svg)](LICENSE)
+![npm](https://img.shields.io/npm/v/otp-angular)
+![npm](https://img.shields.io/npm/dt/otp-angular)
+![GitHub issues](https://img.shields.io/github/issues/subha-patra/otp-angular)
+![GitHub stars](https://img.shields.io/github/stars/subha-patra/otp-angular)
+![GitHub license](https://img.shields.io/github/license/subha-patra/otp-angular)
