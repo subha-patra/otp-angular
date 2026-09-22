@@ -1,8 +1,8 @@
 # OTP Angular
 
-`otp-angular` is a lightweight OTP input component for Angular applications. It works with Angular reactive forms, template-driven forms, and direct event binding.
+`otp-angular` is an Angular OTP input component for verification codes, 2FA/MFA login flows, Web OTP SMS auto-fill, resend countdowns, accessibility, and custom OTP UI. It works with Angular reactive forms, template-driven forms, and direct event binding.
 
-Current version: `1.2.0`
+Current version: `1.3.0`
 
 Angular support: Angular 20, 21, and 22
 
@@ -18,20 +18,24 @@ Angular support: Angular 20, 21, and 22
 - Standalone Angular component: import `OtpAngular` directly in a standalone component.
 - Reactive forms support: works with `formControl`, `formControlName`, and `FormGroup`.
 - Template-driven forms support: works with `[(ngModel)]`.
-- Manual event support: use `onInputChange`, `onAutoSubmit`, and `onResendAvailable`.
+- Manual event support: use `onInputChange`, `onAutoSubmit`, `onResendTimerChange`, and `onResendAvailable`.
 - Configurable OTP length: choose 4 digits, 6 digits, or any custom length.
 - Numeric-only mode: block non-numeric characters when `numbersOnly` is enabled.
 - Alphanumeric mode: allow letters and numbers by default.
 - Uppercase mode: convert letters to uppercase with `showCaps`.
-- Password mode: hide OTP characters with password-style inputs.
+- Password mode: hide OTP characters with password-style inputs, with optional banking-style mask delay.
 - Auto focus: automatically focus the first input when the component renders in the browser.
-- Auto submit: emit the full OTP value when all boxes are filled.
+- Auto submit: emit the full OTP value when all boxes are filled, with optional valid-only submit control.
+- Loading/verifying state: disable OTP boxes and show a compact spinner while verification is running.
+- Web OTP SMS auto-fill: optionally fill OTP from supported Android Chrome SMS prompts with `webOtp`.
+- Accessibility support: screen-reader labels, live error/resend announcements, and keyboard-only controls.
 - Paste support: paste a full OTP and fill the boxes automatically.
-- Keyboard navigation: supports Backspace, ArrowLeft, and ArrowRight.
+- Keyboard navigation: supports Backspace, Delete, Home, End, ArrowLeft, and ArrowRight.
 - Disabled state: works through Angular forms disable state and the public `disabled` signal.
-- Error state: optionally marks empty boxes on blur with `showError`.
-- Resend countdown: show a resend timer and emit when the resend action is clicked.
-- Public methods: call `setValue()` and `reset()` from a parent component.
+- Error state: show Angular form validation messages after touch, with custom messages for cases like invalid or expired OTP.
+- Resend countdown: show a resend timer, emit every timer change, and emit when the resend action is clicked.
+- Public methods: call `setValue()`, `clear()`, `focus()`, `focusIndex(index)`, and `reset()` from a parent component.
+- Custom input template: use `otpAngularInputTemplate` and `otpAngularInput` to fully control each OTP box UI.
 - Custom styling: pass custom classes and inline styles for the container and input boxes.
 - Per-input styling: pass arrays for input classes or styles.
 - Separator support: show a separator between OTP inputs.
@@ -70,7 +74,9 @@ export class LoginComponent {
     length: 6,
     numbersOnly: true,
     autoFocus: true,
-    autoSubmit: true
+    autoSubmit: true,
+    autoSubmitValidOnly: true,
+    webOtp: true
   });
 
   onInputChange(value: string | number | null): void {
@@ -133,11 +139,19 @@ export class NgModelOtpComponent {
 | --- | --- | --- | --- |
 | `config` | `OtpAngularType` | Yes | Main configuration object. |
 | `disabled` | `WritableSignal<boolean>` | No | Programmatically disables or enables all boxes. |
+| `loading` | `WritableSignal<boolean>` | No | Shows verifying state and blocks user input without disabling the Angular form control. |
 | `onInputChange` | `Output<string \| number \| null>` | No | Emits whenever the OTP value changes. |
 | `onAutoSubmit` | `Output<string \| number \| null>` | No | Emits when all boxes are filled and `autoSubmit` is true. |
+| `onResendTimerChange` | `Output<number>` | No | Emits the remaining resend countdown seconds from the initial value through `0`. |
 | `onResendAvailable` | `Output<boolean>` | No | Emits `true` when the resend action is clicked. |
 | `setValue(value)` | Method | No | Sets the visible OTP value from the parent component. |
+| `clear()` | Method | No | Clears all boxes and updates the Angular form value to `null`. |
+| `focus()` | Method | No | Focuses the first OTP box when enabled in the browser; no-op while disabled, loading, or SSR. |
+| `focusIndex(index)` | Method | No | Focuses a zero-based OTP box index when enabled in the browser; invalid indexes, disabled/loading state, and SSR are ignored. |
 | `reset()` | Method | No | Restarts the resend countdown. |
+| `OtpAngularInputTemplate` | Directive | No | Place on an `ng-template` inside `<otp-angular>` to customize each rendered OTP box. |
+| `OtpAngularInput` | Directive | No | Place on the real focusable input inside a custom template so focus, paste, arrow keys, and public focus methods keep working. |
+| `OtpAngularInputContext` | Type | No | Type for the custom template context passed as `let-otp`. |
 
 ## Config Options
 
@@ -146,9 +160,21 @@ export class NgModelOtpComponent {
 | `length` | `number` | `4` | Number of OTP boxes. |
 | `numbersOnly` | `boolean` | `false` | Allows only numeric input. |
 | `autoSubmit` | `boolean` | `false` | Emits `onAutoSubmit` when the OTP is complete. |
+| `autoSubmitValidOnly` | `boolean` | `false` | When `autoSubmit` is true, only emits after accepted input with no rejected or truncated characters and no invalid Angular form state. |
 | `autoFocus` | `boolean` | `false` | Focuses the first input in the browser after render. |
+| `webOtp` | `boolean` | `false` | Enables Web OTP API SMS auto-fill on supported secure browsers. |
 | `isPassword` | `boolean` | `false` | Uses password input type to hide characters. |
+| `maskDelay` | `number` | `0` | When `isPassword` is true, briefly shows newly typed or pasted characters for this many milliseconds before masking them again. |
 | `showError` | `boolean` | `false` | Adds error styling to empty boxes on blur. |
+| `errorMessages` | `Record<string, string>` | `{}` | Custom messages for Angular form errors such as `invalidOtp` or `otpExpired`. |
+| `errorMessageClass` | `string` | `''` | CSS class added to the rendered validation message. |
+| `loadingLabel` | `string` | `Verifying...` | Text shown beside the loading spinner. |
+| `loadingContainerClass` | `string` | `''` | CSS class added to the loading status row. |
+| `loadingSpinnerClass` | `string` | `''` | CSS class added to the loading spinner. |
+| `ariaLabel` | `string` | `One-time password` | Accessible label for the full OTP input group. |
+| `inputAriaLabel` | `string` | `One-time password digit {index} of {length}` | Accessible label template for each OTP input. Supports `{index}` and `{length}`. |
+| `resendAriaLabel` | `string` | `Resend verification code` | Accessible label for the resend action button. |
+| `resendCountdownAriaLabel` | `string` | `Resend verification code available in {seconds} seconds` | Live countdown announcement template. Supports `{seconds}` and `{label}`. |
 | `showCaps` | `boolean` | `false` | Converts letters to uppercase. |
 | `containerClass` | `string \| string[]` | `''` | CSS class or classes for the OTP container. |
 | `containerStyles` | `object` | `{}` | Inline styles for the OTP container. |
@@ -174,6 +200,9 @@ import { OtpAngular, OtpAngularType } from 'otp-angular';
   template: `
     <otp-angular [config]="config()" />
     <button type="button" (click)="fillOtp()">Fill</button>
+    <button type="button" (click)="clearOtp()">Clear</button>
+    <button type="button" (click)="focusOtp()">Focus</button>
+    <button type="button" (click)="focusThirdBox()">Focus third box</button>
     <button type="button" (click)="disableOtp()">Disable</button>
   `
 })
@@ -186,6 +215,18 @@ export class DemoComponent {
     this.otpRef.setValue('1234');
   }
 
+  clearOtp(): void {
+    this.otpRef.clear();
+  }
+
+  focusOtp(): void {
+    this.otpRef.focus();
+  }
+
+  focusThirdBox(): void {
+    this.otpRef.focusIndex(2);
+  }
+
   disableOtp(): void {
     this.otpRef.disabled.set(true);
   }
@@ -195,6 +236,265 @@ export class DemoComponent {
   }
 }
 ```
+
+## Password Mode With Mask Delay
+
+Use `isPassword` to mask OTP boxes. Add `maskDelay` when you want newly typed or pasted characters to show briefly before they are hidden again.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular],
+  template: `<otp-angular [config]="config()" />`
+})
+export class PasswordOtpComponent {
+  config = signal<OtpAngularType>({
+    length: 6,
+    numbersOnly: true,
+    isPassword: true,
+    maskDelay: 500
+  });
+}
+```
+
+`maskDelay` works only when `isPassword` is true. Programmatic values from forms, `setValue()`, and Web OTP stay masked immediately.
+
+## Custom Input Template
+
+Use `otpAngularInputTemplate` when the default input markup is not enough. The template receives one context object per box as `let-otp`. Put `otpAngularInput` on the real input element so the component can still manage focus, paste, Backspace, arrow keys, `focus()`, and `focusIndex(index)`.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { OtpAngular, OtpAngularInput, OtpAngularInputTemplate, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular, OtpAngularInput, OtpAngularInputTemplate],
+  template: `
+    <otp-angular [config]="config()">
+      <ng-template otpAngularInputTemplate let-otp>
+        <input
+          otpAngularInput
+          maxlength="1"
+          autocomplete="one-time-code"
+          [value]="otp.value"
+          [disabled]="otp.disabled"
+          [readOnly]="otp.readonly"
+          [type]="otp.type"
+          [placeholder]="otp.placeholder"
+          [class]="otp.inputClass"
+          [style]="otp.inputStyle"
+          [class.pin-box]="true"
+          [attr.aria-label]="otp.ariaLabel"
+          [attr.aria-invalid]="otp.ariaInvalid"
+          [attr.aria-describedby]="otp.ariaDescribedBy"
+          [attr.inputmode]="otp.inputMode"
+          [attr.pattern]="otp.pattern"
+          [class.error]="otp.hasError"
+          (keydown)="otp.handlers.keydown($event)"
+          (blur)="otp.handlers.blur($event)"
+          (input)="otp.handlers.input($event)"
+          (paste)="otp.handlers.paste($event)"
+        />
+      </ng-template>
+    </otp-angular>
+  `
+})
+export class CustomOtpComponent {
+  config = signal<OtpAngularType>({
+    length: 6,
+    numbersOnly: true,
+    autoSubmit: true
+  });
+}
+```
+
+The context also includes `index`, `loading`, `componentDisabled`, `blocked`, `inputClass`, `inputStyle`, `separator`, `isLast`, `maxlength`, `autocomplete`, and `name` for richer custom UIs.
+
+## Custom Resend Timer UI
+
+Use `onResendTimerChange` when your app wants to show the countdown outside the built-in resend row. The built-in resend UI still works as before.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular],
+  template: `
+    <otp-angular
+      [config]="config()"
+      (onResendTimerChange)="remainingSeconds.set($event)"
+      (onResendAvailable)="resendCode()"
+    />
+
+    <p>Try again in {{ remainingSeconds() }} seconds</p>
+  `
+})
+export class CustomResendComponent {
+  config = signal<OtpAngularType>({ length: 6, resend: 30 });
+  remainingSeconds = signal(30);
+
+  resendCode(): void {
+    console.log('Resend clicked');
+  }
+}
+```
+
+## Web OTP SMS Auto-Fill
+
+Enable browser-assisted SMS OTP filling with `webOtp: true`:
+
+```ts
+config: OtpAngularType = {
+  length: 6,
+  numbersOnly: true,
+  autoSubmit: true,
+  webOtp: true
+};
+```
+
+Web OTP works mainly on supported Android Chrome browsers and requires a secure context such as HTTPS. Your backend must send a Web OTP formatted SMS that includes the site domain and OTP code. Unsupported browsers, denied permission, SSR, insecure pages, and iframes without `Permissions-Policy: otp-credentials` support fall back to normal manual typing and paste behavior.
+
+## Strict Auto Submit
+
+Use `autoSubmitValidOnly` when your app should auto-submit only after clean, accepted input. Rejected paste characters still update the visible OTP from the accepted part, but `onAutoSubmit` will not fire for that paste.
+
+```ts
+config: OtpAngularType = {
+  length: 6,
+  numbersOnly: true,
+  autoSubmit: true,
+  autoSubmitValidOnly: true
+};
+```
+
+For example, pasting `12a345` into a numeric OTP can fill the accepted digits, but the component will wait for a clean completion before emitting `onAutoSubmit`.
+
+## Accessibility Labels
+
+The component includes a labelled OTP group, per-box labels, assertive form-error announcements, and polite resend countdown announcements. You can customize the screen-reader text without changing the visible UI.
+
+```ts
+config: OtpAngularType = {
+  length: 6,
+  numbersOnly: true,
+  ariaLabel: 'Login verification code',
+  inputAriaLabel: 'Verification code digit {index} of {length}',
+  resendAriaLabel: 'Send a new verification code',
+  resendCountdownAriaLabel: 'New code available in {seconds} seconds'
+};
+```
+
+Keyboard users can move with ArrowLeft and ArrowRight, jump with Home and End, remove the current box with Delete, and use Backspace as usual.
+
+## Loading / Verifying State
+
+Use the public `loading` signal when your app starts server-side verification. This keeps the visible OTP value in place, blocks user typing and paste, and shows a small status row until you turn loading off.
+
+```ts
+import { Component, ViewChild, signal } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular, ReactiveFormsModule],
+  template: `
+    <otp-angular
+      [config]="config()"
+      [formControl]="otp"
+      (onAutoSubmit)="verifyOtp($event)"
+    />
+  `
+})
+export class VerifyOtpComponent {
+  @ViewChild(OtpAngular) otpRef!: OtpAngular;
+
+  config = signal<OtpAngularType>({
+    length: 6,
+    numbersOnly: true,
+    autoSubmit: true,
+    loadingLabel: 'Checking code...'
+  });
+
+  otp = new FormControl<string | number | null>('');
+
+  async verifyOtp(value: string | number | null): Promise<void> {
+    this.otpRef.loading.set(true);
+    try {
+      await this.verifyCodeOnServer(value);
+    } finally {
+      this.otpRef.loading.set(false);
+    }
+  }
+
+  private verifyCodeOnServer(value: string | number | null): Promise<void> {
+    return Promise.resolve();
+  }
+}
+```
+
+## Form Error Messages
+
+`otp-angular` can read Angular form errors from reactive forms and `ngModel`. It shows one message after the control is touched and invalid, and adds error styling plus `aria-invalid` to the OTP boxes.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular, ReactiveFormsModule],
+  template: `<otp-angular [config]="config()" [formControl]="otp" />`
+})
+export class VerifyOtpComponent {
+  config = signal<OtpAngularType>({
+    length: 6,
+    numbersOnly: true,
+    errorMessages: {
+      invalidOtp: 'Invalid OTP',
+      otpExpired: 'OTP expired'
+    }
+  });
+
+  otp = new FormControl<string | number | null>('', {
+    validators: [Validators.required, Validators.minLength(6)]
+  });
+
+  rejectCode(): void {
+    this.otp.markAsTouched();
+    this.otp.setErrors({ invalidOtp: true });
+  }
+
+  expireCode(): void {
+    this.otp.markAsTouched();
+    this.otp.setErrors({ otpExpired: true });
+  }
+}
+```
+
+Built-in messages are available for `required`, `minlength`, `maxlength`, `pattern`, `invalidOtp`, and `otpExpired`. If a key is not known and no custom message is configured, the component falls back to `Invalid OTP`.
+
+## Version 1.3.0 Notes
+
+- Adds optional Web OTP SMS auto-fill with `webOtp: true`.
+- Uses the existing form/value pipeline, so Web OTP updates visible boxes, reactive forms, `ngModel`, `onInputChange`, and `onAutoSubmit`.
+- Falls back silently when Web OTP is unsupported, unavailable, denied, aborted, or rendered on the server.
+- Adds Angular-form-aware error messages for touched invalid controls.
+- Supports custom `errorMessages` and `errorMessageClass` config while keeping the existing `showError` blur styling.
+- Adds a parent-controlled loading/verifying state with `otpRef.loading.set(true)`.
+- Adds public `clear()`, `focus()`, and `focusIndex(index)` methods for parent-controlled OTP flows.
+- Adds `onResendTimerChange` so parent apps can render custom resend timer UI from the same countdown.
+- Adds `otpAngularInputTemplate` and `otpAngularInput` for advanced custom OTP box markup without forking the library.
+- Adds `maskDelay` for password-mode OTP boxes, so newly typed or pasted characters can briefly show before masking.
+- Adds `autoSubmitValidOnly` so apps can block automatic submit after rejected or truncated paste input.
+- Improves accessibility with configurable screen-reader labels, assertive error announcements, polite resend countdown announcements, native resend button markup, and Home/End/Delete keyboard support.
+
+## Version 1.2.1 Notes
+
+- Refreshes the npm README so users can see the full feature list, examples, config options, and release workflow directly on the package page.
+- Keeps the same public API and Angular 20-22 compatibility from `1.2.0`.
 
 ## Version 1.2.0 Notes
 
@@ -222,7 +522,7 @@ Example:
 ```json
 {
   "name": "otp-angular",
-  "version": "1.2.1"
+  "version": "1.3.0"
 }
 ```
 
@@ -254,7 +554,8 @@ node -p "require('./dist/otp-angular/package.json').version"
 Publish from the built package:
 
 ```bash
-npm publish dist/otp-angular --access public
+cd dist/otp-angular
+npm publish --access public
 ```
 
 ## 📄 License
