@@ -1,12 +1,10 @@
-# 🔐 OTP Angular
+# OTP Angular
 
-**Otp Angular** is a lightweight, highly customizable, and dependency-free OTP (One-Time Password) input component built for Angular 20+ applications. It offers seamless integration, flexible configuration, and a polished user experience for OTP or verification inputs. The component now also includes a built-in **resend option**, making it easy to handle OTP resubmission flows directly within the UI.
+`otp-angular` is a lightweight OTP input component for Angular applications. It works with Angular reactive forms, template-driven forms, and direct event binding.
 
-> ✅ Supports Angular 20+  
-> 🔧 Fully customizable  
-> 🎯 Keyboard navigation support  
-> 🧪 Easily testable & maintainable  
-> 💡 Auto-focus, password-style, number-only, and more
+Current version: `1.2.0`
+
+Angular support: Angular 20, 21, and 22
 
 ---
 
@@ -14,159 +12,250 @@
 
 [Demo](https://stackblitz.com/edit/stackblitz-starters-osu6xqrf?file=package.json)
 ---
-## 📦 Installation
+
+## Features
+
+- Standalone Angular component: import `OtpAngular` directly in a standalone component.
+- Reactive forms support: works with `formControl`, `formControlName`, and `FormGroup`.
+- Template-driven forms support: works with `[(ngModel)]`.
+- Manual event support: use `onInputChange`, `onAutoSubmit`, and `onResendAvailable`.
+- Configurable OTP length: choose 4 digits, 6 digits, or any custom length.
+- Numeric-only mode: block non-numeric characters when `numbersOnly` is enabled.
+- Alphanumeric mode: allow letters and numbers by default.
+- Uppercase mode: convert letters to uppercase with `showCaps`.
+- Password mode: hide OTP characters with password-style inputs.
+- Auto focus: automatically focus the first input when the component renders in the browser.
+- Auto submit: emit the full OTP value when all boxes are filled.
+- Paste support: paste a full OTP and fill the boxes automatically.
+- Keyboard navigation: supports Backspace, ArrowLeft, and ArrowRight.
+- Disabled state: works through Angular forms disable state and the public `disabled` signal.
+- Error state: optionally marks empty boxes on blur with `showError`.
+- Resend countdown: show a resend timer and emit when the resend action is clicked.
+- Public methods: call `setValue()` and `reset()` from a parent component.
+- Custom styling: pass custom classes and inline styles for the container and input boxes.
+- Per-input styling: pass arrays for input classes or styles.
+- Separator support: show a separator between OTP inputs.
+- Theme support: built-in `light` and `dark` theme option.
+- Multiple-instance safe: multiple OTP components can be used on the same page.
+- SSR-safe: avoids browser-only focus, timer, and clipboard behavior on the server.
+- No runtime dependency other than Angular and `tslib`.
+
+## Installation
 
 ```bash
 npm install otp-angular
 ```
---- 
 
-## 🚀 Latest changes in 1.0.4
+## Quick Start
 
-- **Update Readme** Readme file updated
- 
+### Standalone Component
 
----
-
-## 🚀 Latest changes in 1.0.3
-
-- **Support ReactiveFormsModule & FormsModule** formControl and ngModel are supported
-- **Support types on Config** types will be available
-- **Fixed Paste Event** types will be available
-
----
-
-## 🚀 latest Changes in 1.0.1
-
-- **Emits `null` instead of an empty string** if no value is supplied
-- **Resend Option added** if you add resend as option then it will open
-
----
-
-
-## Usage
-
-
-For Component
-
-```bash
+```ts
+import { Component, signal } from '@angular/core';
 import { OtpAngular, OtpAngularType } from 'otp-angular';
 
 @Component({
-  imports: [...others, OtpAngular, OtpAngularType]
+  selector: 'app-login',
+  imports: [OtpAngular],
+  template: `
+    <otp-angular
+      [config]="config()"
+      (onInputChange)="onInputChange($event)"
+      (onAutoSubmit)="verifyOtp($event)"
+    />
+  `
 })
+export class LoginComponent {
+  config = signal<OtpAngularType>({
+    length: 6,
+    numbersOnly: true,
+    autoFocus: true,
+    autoSubmit: true
+  });
 
-export class <ComponentName> {
-  protected config = signal<OtpAngularType>({ length: 4 });
+  onInputChange(value: string | number | null): void {
+    console.log(value);
+  }
+
+  verifyOtp(value: string | number | null): void {
+    console.log(value);
+  }
 }
-
 ```
 
-For Template
+### Reactive Forms
+
+```ts
+import { Component, signal } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  selector: 'app-otp-form',
+  imports: [OtpAngular, ReactiveFormsModule],
+  template: `
+    <otp-angular [config]="config()" [formControl]="otp" />
+  `
+})
+export class OtpFormComponent {
+  config = signal<OtpAngularType>({ length: 4, numbersOnly: true });
+  otp = new FormControl<string | number | null>('');
+
+  fillDemoValue(): void {
+    this.otp.setValue('1234');
+  }
+}
+```
+
+### Template-Driven Forms
+
+```ts
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  selector: 'app-ng-model-otp',
+  imports: [OtpAngular, FormsModule],
+  template: `
+    <otp-angular [config]="config" [(ngModel)]="otp" />
+  `
+})
+export class NgModelOtpComponent {
+  config: OtpAngularType = { length: 4 };
+  otp: string | number | null = '';
+}
+```
+
+## Inputs, Outputs, And Methods
+
+| API | Type | Required | Description |
+| --- | --- | --- | --- |
+| `config` | `OtpAngularType` | Yes | Main configuration object. |
+| `disabled` | `WritableSignal<boolean>` | No | Programmatically disables or enables all boxes. |
+| `onInputChange` | `Output<string \| number \| null>` | No | Emits whenever the OTP value changes. |
+| `onAutoSubmit` | `Output<string \| number \| null>` | No | Emits when all boxes are filled and `autoSubmit` is true. |
+| `onResendAvailable` | `Output<boolean>` | No | Emits `true` when the resend action is clicked. |
+| `setValue(value)` | Method | No | Sets the visible OTP value from the parent component. |
+| `reset()` | Method | No | Restarts the resend countdown. |
+
+## Config Options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `length` | `number` | `4` | Number of OTP boxes. |
+| `numbersOnly` | `boolean` | `false` | Allows only numeric input. |
+| `autoSubmit` | `boolean` | `false` | Emits `onAutoSubmit` when the OTP is complete. |
+| `autoFocus` | `boolean` | `false` | Focuses the first input in the browser after render. |
+| `isPassword` | `boolean` | `false` | Uses password input type to hide characters. |
+| `showError` | `boolean` | `false` | Adds error styling to empty boxes on blur. |
+| `showCaps` | `boolean` | `false` | Converts letters to uppercase. |
+| `containerClass` | `string \| string[]` | `''` | CSS class or classes for the OTP container. |
+| `containerStyles` | `object` | `{}` | Inline styles for the OTP container. |
+| `inputClass` | `string \| string[]` | `''` | CSS class or classes for input boxes. |
+| `inputStyles` | `object \| object[]` | `{}` | Inline styles for input boxes. |
+| `placeholder` | `string` | `''` | Placeholder shown inside each input. |
+| `separator` | `string` | `''` | Character shown between input boxes. |
+| `resend` | `number` | `0` | Enables resend countdown when greater than `0`. |
+| `resendLabel` | `string` | `RESEND VERIFICATION CODE` | Text shown for resend action/timer. |
+| `resendContainerClass` | `string` | `''` | CSS class for the resend wrapper. |
+| `resendLabelClass` | `string` | `''` | CSS class for the resend action label. |
+| `resendTimerClass` | `string` | `''` | CSS class for the countdown text. |
+| `theme` | `'light' \| 'dark'` | `'light'` | Built-in theme mode. |
+
+## Public Method Example
+
+```ts
+import { Component, ViewChild, signal } from '@angular/core';
+import { OtpAngular, OtpAngularType } from 'otp-angular';
+
+@Component({
+  imports: [OtpAngular],
+  template: `
+    <otp-angular [config]="config()" />
+    <button type="button" (click)="fillOtp()">Fill</button>
+    <button type="button" (click)="disableOtp()">Disable</button>
+  `
+})
+export class DemoComponent {
+  @ViewChild(OtpAngular) otpRef!: OtpAngular;
+
+  config = signal<OtpAngularType>({ length: 4, resend: 30 });
+
+  fillOtp(): void {
+    this.otpRef.setValue('1234');
+  }
+
+  disableOtp(): void {
+    this.otpRef.disabled.set(true);
+  }
+
+  resetResendTimer(): void {
+    this.otpRef.reset();
+  }
+}
+```
+
+## Version 1.2.0 Notes
+
+- Builds and tests with Angular 22.
+- Keeps Angular 20, 21, and 22 peer dependency support.
+- Uses signal state for the OTP value.
+- Uses Angular template refs instead of global DOM IDs.
+- Removes internal helper directives for input filtering and disabled state.
+- Fixes external form writes so `formControl.setValue()`, `[(ngModel)]`, and `setValue()` update the visible boxes.
+- Emits `null` for an empty numeric OTP instead of `0`.
+- Supports multiple OTP components on the same page without focus/value conflicts.
+- Adds explicit SSR/browser guards for focus, timers, and legacy clipboard fallback.
+- Expands tests for forms, paste, auto-submit, disabled state, multiple instances, keyboard behavior, and server-platform creation.
+
+## Updating The Version
+
+Update the version in:
+
+```text
+projects/otp-angular/package.json
+```
+
+Example:
+
+```json
+{
+  "name": "otp-angular",
+  "version": "1.2.1"
+}
+```
+
+Keep peer dependencies compatible with Angular 20-22 unless support changes:
+
+```json
+{
+  "@angular/common": "^20.0.0 || ^21.0.0 || ^22.0.0",
+  "@angular/core": "^20.0.0 || ^21.0.0 || ^22.0.0",
+  "@angular/forms": "^20.0.0 || ^21.0.0 || ^22.0.0"
+}
+```
+
+Before publishing:
+
 ```bash
-@let _config = config();
-<!-- With Event Binding -->
-<otp-angular [config]="_config" (onInputChange)="onInputChange($event)"  (onResendAvailable)="resend($event)" />
-
-<!-- Using Reactive FormControl -->
-<otp-angular [config]="_config" formControlName="otp" />
-
-<!-- Using Forms Module -->
-<otp-angular [config]="_config" [(ngModel)]="otp" />
-
+npm run ng -- build otp-angular
+npm run ng -- test otp-angular --watch=false --browsers=ChromeHeadless --progress=false
+npm run build
+git diff --check
 ```
 
---- 
-
-
-## ⚙️ Inputs/Outputs
-
- | Option            | Type                      |required    | Description                    | Default|
-|-------------------|---------------------------|-------------|-------------------------------|---------|
-| `disabled`        | `boolean`                 |    No       | Disables otp when set to true | `false` |
-| `onInputChange`   | `Output`                  |    No       | Emits the OTP value on change, it's return `string`, `number` or `null` | —       |
-| `onResendAvailable`| `Output`                 |    No       | Emits when you click resend option, as a boolean(true)  | —       |
-| `setValue`        | `function`                |    No       | Set the otp value             | —       |
-| `reset`           | `function`                |    No       | Reset the Resend              | —       |
-| `config`          | `object`                  |    Yes      | Configure based on option. (see Config Options below)   | `{ length: 4 }` |
-
-
-
-## ⚙️ Config Options
-
-
- | Option            | Type                      |required    | Description                    | Default|
-|-------------------|---------------------------|-------------|-------------------------------|---------|
-| `length`          | `number`                  |    Yes      | Number of OTP digits          | 4       |
-| `numbersOnly`     | `boolean`                 |    No       | Allow only numeric input      | `false` |
-| `autoFocus`       | `boolean`                 |    No       | Auto-focus first input        | `false` |
-| `isPassword`      | `boolean`                 |    No       | Mask input characters         | `false` |
-| `showError`       | `boolean`                 |    No       | Show red border on error      | `false` |
-| `showCaps`        | `boolean`                 |    No       | Transform to Capital letters  | `false` |
-| `containerClass`  | `string` or `string[]`    |    No       | Custom CSS class for container| —       |
-| `containerStyles` | `object`                  |    No       | Inline styles for container   | `{}`    |
-| `inputClass`      | `string` or `string[]`    |    No       | Custom class for input boxes  | —       |
-| `inputStyles`     | `object` or `object[]`    |    No       | Inline styles for input fields| `{}`    |
-| `placeholder`     | `string`                  |    No       | Placeholder for each input box| `''`    |
-| `separator`       | `string`                  |    No       | Optional separator character  | `''`    |
-| `resend`          | `number`                  |    No       | Enable the Resend option      | `0`    |
-| `resendLabel`     | `string`                  |    No       | Label for Resend              | `RESEND VERIFICATION CODE`    |
-| `resendContainerClass`   | `string`           |    No       | Custom class for resend container  | `''`    |
-| `resendLabelClass`       | `string`           |    No       | Optional class for resend Label    | `''`    |
-| `resendTimerClass`       | `string`           |    No       | Optional class for resend timer    | `''`    |
-
-
-
----
-
-
-
-### 📘 Option Descriptions
-
-- **`length`**: Sets how many input boxes are shown (e.g., 6 for a 6-digit OTP).
-- **`numbersOnly`**: If true, only numeric input is allowed in each box.
-- **`autoFocus`**: Automatically focuses the first input box on load.
-- **`isPassword`**: Hides characters behind dots, like a password field.
-- **`showError`**: Enables error styling (e.g., red border).
-- **`showCaps`**: Transform to Capital letters .
-- **`containerClass` / `inputClass` / `resendContainerClass` / `resendLabelClass` / `resendTimerClass` **: Lets you add your own CSS classes for styling.
-- **`containerStyles` / `inputStyles`**: Set inline styles directly from your component.
-- **`placeholder`**: The character shown in empty input boxes (like `*` or `_`).
-- **`separator`**: Visual separator between input boxes (like `-` or `:`).
-- **`resend`**: Sets the value to show the Resend option, value will be in seconds (like `60`).
-- **`resendLabel`**: To change the label for resend (e.g., `Resend Code`).
-
----
-
-## 🧩 Other Features
-Use @ViewChild to get a reference to the component
-```bash
-@ViewChild(OtpAngular, { static: false }) otpRef!: OtpAngular;
-```
-
-
-### 🔒 Disabling Inputs
-
-You can disable all input fields using the `disabled` input or programmatically:
+Check the built package version:
 
 ```bash
-this.otpRef.disabled.set(true);
+node -p "require('./dist/otp-angular/package.json').version"
 ```
 
-
-### 🔁 Updating OTP Value
+Publish from the built package:
 
 ```bash
-this.otpRef.setValue('1234');
+npm publish dist/otp-angular --access public
 ```
-
-### 🔁 Reset the timer of resend
-
-```bash
-this.otpRef.reset();
-```
-
----
 
 ## 📄 License
 
